@@ -1,0 +1,44 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  @apply font-instrumentsans;
+}
+
+html, body { height: 100%; margin: 0; }
+#root { min-height: 100%; }
+html { scroll-behavior: smooth; }
+body { font-family: "Instrument Sans", "Noto Sans Khmer", sans-serif; color: #17231F; background: #F6F7F3; }
+
+:focus-visible { outline: 2px solid #0E7C66; outline-offset: 2px; }
+
+.leaflet-popup-content-wrapper { padding: 0; border-radius: 16px; box-shadow: 0 10px 32px rgba(23, 35, 31, 0.22); overflow: hidden; }
+.leaflet-popup-content { margin: 0; font-family: inherit; line-height: 1.35; }
+.leaflet-popup-content p { margin: 0; }
+.leaflet-popup-tip { box-shadow: 0 6px 14px rgba(23, 35, 31, 0.12); }
+a.leaflet-popup-close-button { top: 8px; right: 8px; width: 28px; height: 28px; padding: 0; font-size: 20px; line-height: 28px; border-radius: 9999px; color: #5E6B66; }
+a.leaflet-popup-close-button:hover { background: #F0F2EC; color: #17231F; }
+.leaflet-container { font-family: inherit; }
+
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; animation: none !important; }
+  html { scroll-behavior: auto; }
+}
+
+.ev-pin svg {
+  display: block; overflow: visible; transform-origin: 50% 100%;
+  filter: drop-shadow(0 2px 2px rgba(23, 35, 31, 0.35)); transition: transform 0.15s;
+}
+.ev-pin:hover svg { transform: scale(1.12); }
+
+.you-pin { position: relative; }
+.you-dot {
+  position: absolute; inset: 5px; border-radius: 9999px;
+  background: #2563EB; border: 3px solid #fff; box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
+}
+.you-pulse {
+  position: absolute; inset: 0; border-radius: 9999px; background: #2563EB;
+  opacity: 0.45; animation: you-ping 1.8s ease-out infinite;
+}
+@keyframes you-ping { from { transform: scale(0.6); opacity: 0.55; } to { transform: scale(2.6); opacity: 0; } }

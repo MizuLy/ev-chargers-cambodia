@@ -1,0 +1,25 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model EvStation {
+  id         Int      @id @default(autoincrement())
+  externalId String   @unique
+  name       String
+  latitude   Float
+  longitude  Float
+  connectors String[]
+  open24h    Boolean  @default(false)
+  hoursText  String?
+  source     String   @default("mef")
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([latitude, longitude])
+  @@map("ev_stations")
+}
