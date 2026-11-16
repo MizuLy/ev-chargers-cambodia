@@ -9,6 +9,41 @@ const chip = (active) =>
 
 const LEGEND = [["GBT_DC"], ["CCS2"], ["GBT_DC", "CCS2"], []];
 
+// where the user is, in words: the city or district and province, not coordinates
+function LocationLine({ status, place, onRetry }) {
+  const dot = (
+    <span className="mt-1.5 inline-block h-2.5 w-2.5 shrink-0 rounded-full bg-[#2563EB]" aria-hidden="true" />
+  );
+  const retry = (
+    <button onClick={onRetry} className="font-semibold text-ink underline">
+      Try again
+    </button>
+  );
+
+  if (status === "tracking") {
+    return (
+      <p className="flex gap-2 text-sm">
+        {dot}
+        <span>
+          <span className="font-semibold">
+            {place?.label ? `You're in ${place.label}` : "Your location is on the map"}
+          </span>
+          {place && !place.inCambodia && <span className="text-muted"> All stations are in Cambodia.</span>}
+        </span>
+      </p>
+    );
+  }
+  if (status === "locating") return <p className="text-sm text-muted">Finding your location…</p>;
+  return (
+    <p className="text-sm text-muted">
+      {status === "denied"
+        ? "Location is off. Allow it in your browser's site settings to see where you are. "
+        : "Could not get your location. Check that GPS or Wi-Fi is on. "}
+      {retry}
+    </p>
+  );
+}
+
 export default function StationPanel({
   stations,
   plug,
@@ -21,6 +56,9 @@ export default function StationPanel({
   onNearMe,
   onClearNearMe,
   locating,
+  locationStatus,
+  place,
+  onRetryLocation,
   selectedId,
   onSelect,
   error,
@@ -35,6 +73,8 @@ export default function StationPanel({
             {nearMe ? " closest to you, updating live" : " shown"}
           </p>
         </div>
+
+        <LocationLine status={locationStatus} place={place} onRetry={onRetryLocation} />
 
         <input
           type="search"

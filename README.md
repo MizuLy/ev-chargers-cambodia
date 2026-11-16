@@ -6,7 +6,8 @@ An interactive map of EV charging stations in Cambodia. Browse 104 stations, fil
 
 - Map of every station, with teardrop pins colored by plug type: GB/T, CCS2, both, or unknown.
 - Filters for plug type (GB/T, CCS2) and "Open 24 hours", plus a search by station name. Filters apply instantly in the browser.
-- "Find chargers near me": a pulsing dot shows your position, follows you as you move, and the list shows the 10 closest stations sorted by distance.
+- Your position: a pulsing blue dot shows where you are as soon as the page opens (after you allow location access), follows you as you move, and the panel names your province, for example "You're in Phnom Penh, Cambodia".
+- "Find chargers near me" switches the list to the 10 closest stations, sorted by distance.
 - A station popup with plugs, opening hours, distance, and a "Get directions" link to Google Maps.
 - A homepage with live stats and a short guide to GB/T and CCS2 plugs.
 - The map is limited to Cambodia.
@@ -85,5 +86,6 @@ More detail for contributors is in `client/AGENTS.md`, `server/AGENTS.md`, and `
 ## Notes
 
 - **Location needs a secure page.** Browsers only share your location on `localhost` or HTTPS. Opening the dev site on a phone over plain `http://<your-pc-ip>` will not work. Laptops also give rough positions, while phones with GPS are accurate.
+- **Place names use a third-party service.** The province name comes from OpenStreetMap's free [Nominatim](https://nominatim.org) service. Only your position rounded to about 1 km is sent to it, never the exact position, and nothing is stored by this project.
 - **Station data can be out of date.** Check opening hours before you drive out.
 - Map data from [OpenStreetMap](https://www.openstreetmap.org/copyright) contributors.

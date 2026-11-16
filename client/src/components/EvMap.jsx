@@ -11,6 +11,8 @@ import {
 import "leaflet/dist/leaflet.css";
 import StationPanel from "./StationPanel";
 import StationPopup from "./StationPopup";
+import useLiveLocation from "../hooks/useLiveLocation";
+import usePlaceName from "../hooks/usePlaceName";
 import { distanceKm, markerColor } from "../utils/stations";
 
 const REFRESH_NEARBY_KM = 0.2;
@@ -92,15 +94,27 @@ export default function EvMap({ stations: all, loadError }) {
   const [plug, setPlug] = useState("");
   const [only24h, setOnly24h] = useState(false);
   const [query, setQuery] = useState("");
-  const [user, setUser] = useState(null); // anchor used for the nearby list
-  const [live, setLive] = useState(null); // latest GPS fix { pos, accuracy }
-  const [locating, setLocating] = useState(false);
   const [selected, setSelected] = useState(null);
   const [flyTarget, setFlyTarget] = useState(null);
-  const [error, setError] = useState("");
   const markers = useRef({});
-  const watchId = useRef(null);
-  const anchor = useRef(null);
+
+  // the position is tracked from page load; "Find chargers near me" only switches the list to the closest 10
+  const { pos, accuracy, status, retry } = useLiveLocation();
+  const place = usePlaceName(pos);
+  const [nearMe, setNearMe] = useState(false);
+  const [anchor, setAnchor] = useState(null); // position the nearby list is sorted from
+  const [flown, setFlown] = useState(false);
+
+  // refresh the anchor after about 200 m so the list does not reshuffle on every GPS update
+  if (nearMe && pos && (!anchor || distanceKm(anchor, pos) > REFRESH_NEARBY_KM)) setAnchor(pos);
+
+  // fly to the user once, on the first fix, unless they already picked a station or are outside Cambodia
+  if (pos && !flown) {
+    setFlown(true);
+    if (!selected && L.latLngBounds(CAMBODIA_BOUNDS).contains(pos)) setFlyTarget(pos);
+  }
+
+  const origin = nearMe ? anchor : null;
 
   // filtering and "closest to me" happen in the browser, so filter clicks are instant
   const visible = useMemo(() => {
@@ -111,66 +125,25 @@ export default function EvMap({ stations: all, loadError }) {
         (!only24h || s.open24h) &&
         (!q || s.name.toLowerCase().includes(q)),
     );
-    if (!user) return list;
+    if (!origin) return list;
     return list
-      .map((s) => ({ ...s, distanceKm: distanceKm(user, [s.latitude, s.longitude]) }))
+      .map((s) => ({ ...s, distanceKm: distanceKm(origin, [s.latitude, s.longitude]) }))
       .sort((a, b) => a.distanceKm - b.distanceKm)
       .slice(0, NEARBY_COUNT);
-  }, [all, plug, only24h, query, user]);
+  }, [all, plug, only24h, query, origin]);
 
   const setMarkerRef = useCallback((id, el) => {
     markers.current[id] = el;
   }, []);
 
-  const stopTracking = () => {
-    if (watchId.current != null) navigator.geolocation.clearWatch(watchId.current);
-    watchId.current = null;
-    anchor.current = null;
-    setUser(null);
-    setLive(null);
-    setLocating(false);
-  };
-
-  useEffect(
-    () => () => {
-      if (watchId.current != null) navigator.geolocation.clearWatch(watchId.current);
-    },
-    [],
-  );
-
-  const startTracking = () => {
-    if (!navigator.geolocation) {
-      setError("This browser can't share your location.");
-      return;
+  const findNearMe = () => {
+    if (status === "denied" || status === "unavailable") retry();
+    setNearMe(true);
+    if (pos) {
+      setAnchor(pos);
+      setSelected(null);
+      setFlyTarget([...pos]); // a new array each time, so the map re-centers even if you panned away
     }
-    if (watchId.current != null) return;
-    setLocating(true);
-    watchId.current = navigator.geolocation.watchPosition(
-      ({ coords }) => {
-        const pos = [coords.latitude, coords.longitude];
-        setLocating(false);
-        setLive({ pos, accuracy: coords.accuracy });
-        if (!anchor.current) {
-          anchor.current = pos;
-          setSelected(null);
-          setUser(pos);
-          setFlyTarget(pos);
-        } else if (distanceKm(anchor.current, pos) > REFRESH_NEARBY_KM) {
-          anchor.current = pos;
-          setUser(pos);
-        }
-      },
-      (err) => {
-        if (err.code !== 1 && anchor.current) return; // brief signal loss: keep tracking
-        stopTracking();
-        setError(
-          err.code === 1
-            ? "Location access is blocked. Allow it in your browser's site settings, then try again."
-            : "Could not get your location. Turn on GPS or Wi-Fi and try again.",
-        );
-      },
-      { enableHighAccuracy: true, maximumAge: 5000, timeout: 15000 },
-    );
   };
 
   const select = (s) => {
@@ -189,13 +162,16 @@ export default function EvMap({ stations: all, loadError }) {
         setOnly24h={setOnly24h}
         query={query}
         setQuery={setQuery}
-        nearMe={!!user}
-        onNearMe={startTracking}
-        onClearNearMe={stopTracking}
-        locating={locating}
+        nearMe={!!origin}
+        onNearMe={findNearMe}
+        onClearNearMe={() => setNearMe(false)}
+        locating={nearMe && !anchor && status === "locating"}
+        locationStatus={status}
+        place={place}
+        onRetryLocation={retry}
         selectedId={selected?.id}
         onSelect={select}
-        error={error || loadError}
+        error={loadError}
       />
 
       <MapContainer
@@ -215,17 +191,22 @@ export default function EvMap({ stations: all, loadError }) {
           attribution='© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
         />
         <FlyTo target={flyTarget} />
-        <KeepInView pos={live?.pos} />
+        <KeepInView pos={pos} />
 
-        {live && (
+        {pos && (
           <>
             <Circle
-              center={live.pos}
-              radius={Math.min(live.accuracy, 1500)}
+              center={pos}
+              radius={Math.min(accuracy, 1500)}
               pathOptions={{ color: "#2563EB", weight: 1, fillColor: "#2563EB", fillOpacity: 0.1 }}
             />
-            <Marker position={live.pos} icon={youIcon} zIndexOffset={1000} keyboard={false}>
-              <Popup>You are here</Popup>
+            <Marker position={pos} icon={youIcon} zIndexOffset={1000} keyboard={false}>
+              <Popup>
+                <div className="px-4 py-3 text-sm">
+                  <p className="font-bold">You are here</p>
+                  {place?.label && <p className="mt-0.5 text-muted">{place.label}</p>}
+                </div>
+              </Popup>
             </Marker>
           </>
         )}
