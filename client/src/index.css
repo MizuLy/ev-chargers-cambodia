@@ -11,7 +11,7 @@ html, body { height: 100%; margin: 0; }
 html { scroll-behavior: smooth; }
 body { font-family: "Instrument Sans", "Noto Sans Khmer", sans-serif; color: #17231F; background: #F6F7F3; }
 
-:focus-visible { outline: 2px solid #0E7C66; outline-offset: 2px; }
+:focus-visible { outline: 2px solid #3DA398; outline-offset: 2px; }
 
 .leaflet-popup-content-wrapper { padding: 0; border-radius: 16px; box-shadow: 0 10px 32px rgba(23, 35, 31, 0.22); overflow: hidden; }
 .leaflet-popup-content { margin: 0; font-family: inherit; line-height: 1.35; }

@@ -9,7 +9,8 @@ An interactive map of EV charging stations in Cambodia. Browse 104 stations, fil
 - Your position: a pulsing blue dot shows where you are as soon as the page opens (after you allow location access), follows you as you move, and the panel names your province, for example "You're in Phnom Penh, Cambodia".
 - "Find chargers near me" switches the list to the 10 closest stations, sorted by distance.
 - A station popup with plugs, opening hours, distance, and a "Get directions" link to Google Maps.
-- A homepage with live stats and a short guide to GB/T and CCS2 plugs.
+- A full-screen map with a filter panel (about a third of the screen) and a slim navbar, in the brand color `#3DA398`. On phones the panel sits under the map.
+- A "Plug guide" (info button in the navbar) that explains GB/T and CCS2, shows what the plugs look like, gives example car brands for each, and tells drivers how to check their own car.
 - The map is limited to Cambodia.
 
 ## Tech stack

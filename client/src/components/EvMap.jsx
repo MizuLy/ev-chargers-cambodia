@@ -9,10 +9,9 @@ import {
   useMap,
 } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
-import StationPanel from "./StationPanel";
+import FilterBar from "./FilterBar";
+import StationList from "./StationList";
 import StationPopup from "./StationPopup";
-import useLiveLocation from "../hooks/useLiveLocation";
-import usePlaceName from "../hooks/usePlaceName";
 import { distanceKm, markerColor } from "../utils/stations";
 
 const REFRESH_NEARBY_KM = 0.2;
@@ -61,6 +60,17 @@ function FlyTo({ target }) {
   return null;
 }
 
+// Leaflet does not notice when its container changes size (the phone bottom sheet opening or closing), so tell it
+function ResizeWatcher() {
+  const map = useMap();
+  useEffect(() => {
+    const observer = new ResizeObserver(() => map.invalidateSize({ pan: false }));
+    observer.observe(map.getContainer());
+    return () => observer.disconnect();
+  }, [map]);
+  return null;
+}
+
 // keeps the live position on screen: pans only when the marker leaves the visible map
 function KeepInView({ pos }) {
   const map = useMap();
@@ -90,17 +100,19 @@ const StationMarker = memo(function StationMarker({ station: s, selected, onPick
   );
 });
 
-export default function EvMap({ stations: all, loadError }) {
+// `location` is the live position ({ pos, accuracy, status, retry }) and `place` its name, both owned by the page
+// shell so the navbar can show them too
+export default function EvMap({ stations: all, loadError, location, place }) {
   const [plug, setPlug] = useState("");
   const [only24h, setOnly24h] = useState(false);
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState(null);
   const [flyTarget, setFlyTarget] = useState(null);
+  const [sheetOpen, setSheetOpen] = useState(false); // phone only: the bottom sheet with the station list
   const markers = useRef({});
 
   // the position is tracked from page load; "Find chargers near me" only switches the list to the closest 10
-  const { pos, accuracy, status, retry } = useLiveLocation();
-  const place = usePlaceName(pos);
+  const { pos, accuracy, status, retry } = location;
   const [nearMe, setNearMe] = useState(false);
   const [anchor, setAnchor] = useState(null); // position the nearby list is sorted from
   const [flown, setFlown] = useState(false);
@@ -139,6 +151,7 @@ export default function EvMap({ stations: all, loadError }) {
   const findNearMe = () => {
     if (status === "denied" || status === "unavailable") retry();
     setNearMe(true);
+    setSheetOpen(true); // phone: show the closest stations right away
     if (pos) {
       setAnchor(pos);
       setSelected(null);
@@ -147,15 +160,17 @@ export default function EvMap({ stations: all, loadError }) {
   };
 
   const select = (s) => {
+    setSheetOpen(false); // phone: close the sheet so the station is visible on the map
     setSelected(s);
     setFlyTarget([s.latitude, s.longitude]);
     setTimeout(() => markers.current[s.id]?.openPopup(), 850);
   };
 
   return (
-    <div className="flex flex-col-reverse overflow-hidden rounded-2xl border border-line bg-paper font-instrumentsans shadow-sm md:h-[620px] md:flex-row">
-      <StationPanel
-        stations={visible}
+    // phone: filters on top, map in the middle, station list as a bottom sheet
+    // desktop: filters and list stacked in the left column, map on the right
+    <div className="grid min-h-0 flex-1 grid-cols-1 grid-rows-[auto_minmax(0,1fr)_auto] md:grid-cols-[clamp(340px,36%,520px)_1fr] md:grid-rows-[auto_minmax(0,1fr)]">
+      <FilterBar
         plug={plug}
         setPlug={setPlug}
         only24h={only24h}
@@ -166,61 +181,68 @@ export default function EvMap({ stations: all, loadError }) {
         onNearMe={findNearMe}
         onClearNearMe={() => setNearMe(false)}
         locating={nearMe && !anchor && status === "locating"}
-        locationStatus={status}
-        place={place}
-        onRetryLocation={retry}
-        selectedId={selected?.id}
-        onSelect={select}
         error={loadError}
       />
 
-      <MapContainer
-        center={[11.5564, 104.9282]}
-        zoom={12}
-        className="h-[360px] shrink-0 md:h-full md:flex-1"
-        zoomControl={false}
-        minZoom={7}
-        maxBounds={CAMBODIA_BOUNDS}
-        maxBoundsViscosity={1}
-      >
-        <TileLayer
-          url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
-          keepBuffer={4}
-          noWrap
-          bounds={CAMBODIA_BOUNDS}
-          attribution='© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-        />
-        <FlyTo target={flyTarget} />
-        <KeepInView pos={pos} />
-
-        {pos && (
-          <>
-            <Circle
-              center={pos}
-              radius={Math.min(accuracy, 1500)}
-              pathOptions={{ color: "#2563EB", weight: 1, fillColor: "#2563EB", fillOpacity: 0.1 }}
-            />
-            <Marker position={pos} icon={youIcon} zIndexOffset={1000} keyboard={false}>
-              <Popup>
-                <div className="px-4 py-3 text-sm">
-                  <p className="font-bold">You are here</p>
-                  {place?.label && <p className="mt-0.5 text-muted">{place.label}</p>}
-                </div>
-              </Popup>
-            </Marker>
-          </>
-        )}
-
-        {visible.map((s) => (
-          <StationMarker
-            key={s.id}
-            station={s}
-            selected={selected?.id === s.id}
-            onPick={setSelected}
-            setRef={setMarkerRef}
+      <div className="relative isolate min-h-0 md:col-start-2 md:row-span-2 md:row-start-1">
+        <MapContainer
+          center={[11.5564, 104.9282]}
+          zoom={12}
+          className="absolute inset-0"
+          zoomControl={false}
+          minZoom={7}
+          maxBounds={CAMBODIA_BOUNDS}
+          maxBoundsViscosity={1}
+        >
+          <TileLayer
+            url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
+            keepBuffer={4}
+            noWrap
+            bounds={CAMBODIA_BOUNDS}
+            attribution='© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
           />
-        ))}
-      </MapContainer>
+          <ResizeWatcher />
+          <FlyTo target={flyTarget} />
+          <KeepInView pos={pos} />
+  
+          {pos && (
+            <>
+              <Circle
+                center={pos}
+                radius={Math.min(accuracy, 1500)}
+                pathOptions={{ color: "#2563EB", weight: 1, fillColor: "#2563EB", fillOpacity: 0.1 }}
+              />
+              <Marker position={pos} icon={youIcon} zIndexOffset={1000} keyboard={false}>
+                <Popup>
+                  <div className="px-4 py-3 text-sm">
+                    <p className="font-bold">You are here</p>
+                    {place?.label && <p className="mt-0.5 text-muted">{place.label}</p>}
+                  </div>
+                </Popup>
+              </Marker>
+            </>
+          )}
+  
+          {visible.map((s) => (
+            <StationMarker
+              key={s.id}
+              station={s}
+              selected={selected?.id === s.id}
+              onPick={setSelected}
+              setRef={setMarkerRef}
+            />
+          ))}
+        </MapContainer>
+      </div>
+
+      <StationList
+        stations={visible}
+        nearMe={!!origin}
+        selectedId={selected?.id}
+        onSelect={select}
+        open={sheetOpen}
+        onToggle={() => setSheetOpen((o) => !o)}
+      />
     </div>
   );
 }

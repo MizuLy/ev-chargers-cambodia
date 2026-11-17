@@ -16,7 +16,7 @@ export const markerColor = (connectors) => {
   const gbt = connectors.includes("GBT_DC");
   const ccs = connectors.includes("CCS2");
   if (gbt && ccs) return "#5B4FD6";
-  if (gbt) return "#0E7C66";
+  if (gbt) return "#3DA398";
   if (ccs) return "#E08A12";
   return "#8A948F";
 };

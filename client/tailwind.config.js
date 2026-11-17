@@ -8,7 +8,9 @@ export default {
         ink: "#17231F",
         muted: "#5E6B66",
         line: "#E2E6DF",
-        lagoon: "#0E7C66",
+        primary: "#3DA398", // brand color; dark ink text on it has strong contrast
+        primaryDark: "#247A70", // for teal text on white, where #3DA398 is too light to read
+        primaryTint: "#DDF1EE", // soft background for selected rows
         amber: "#E08A12",
         violet: "#5B4FD6",
       },
